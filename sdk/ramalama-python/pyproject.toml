@@ -15,7 +15,9 @@ dependencies = [
 dynamic = ["version"]
 
 [project.urls]
-Repository = "https://github.com/ramalama-labs/ramalama-sdks/sdk/ramalama-python"
+Repository = "https://github.com/ramalama-labs/ramalama-sdks"
+Source = "https://github.com/ramalama-labs/ramalama-sdks/tree/main/sdk/ramalama-python"
+Documentation = "https://docs.ramalama.com/sdk/python"
 
 [tool.uv]
 package = true

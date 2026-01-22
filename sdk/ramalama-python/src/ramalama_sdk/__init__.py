@@ -3,4 +3,4 @@
 from . import main
 from .main import AsyncRamalamaModel, RamalamaModel
 
-__version__ = "0.1.0"
+__version__ = "0.1.1"
