@@ -2,7 +2,9 @@
   <img src="assets/logo.webp" alt="RamaLama Labs Logo" width="140"/>
 </p>
 
-<h1 align="center">RamaLama Labs</h1>
+<h1 align="center">
+  <img src="assets/wordmark-dark.svg" alt="RamaLama Labs" width="360"/>
+</h1>
 
 <p align="center">
   <strong>Programmable AI on any device.</strong><br/>
