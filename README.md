@@ -1,8 +1,9 @@
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="assets/logo-banner-dark.png">
-  <img alt="Project logo" src="assets/logo-banner-light.png">
+<picture style="display: flex; justify-content: center;">
+  <source media="(prefers-color-scheme: dark)" srcset="assets/lockup-dark.webp">
+  <img alt="Project logo" src="assets/lockup-light.webp" style="width: 60%; height: auto;">
 </picture>
-
+&nbsp
+&nbsp
 <p align="center">
   <strong>Programmable AI on any device.</strong><br/>
   Run LLMs locally on any hardware. If you can build a container you can deploy AI.
