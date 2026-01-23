@@ -1,6 +1,6 @@
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="assets/lockup-light.webp">
-  <img alt="Project logo" src="assets/lockup-dark.webp">
+  <source media="(prefers-color-scheme: dark)" srcset="assets/lockup-dark.webp">
+  <img alt="Project logo" src="assets/lockup-light.webp">
 </picture>
 
 <p align="center">
