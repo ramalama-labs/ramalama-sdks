@@ -1,7 +1,9 @@
-<picture style="display: flex; justify-content: center;">
-  <source media="(prefers-color-scheme: dark)" srcset="assets/lockup-dark.webp">
-  <img alt="Project logo" src="assets/lockup-light.webp" style="width: 60%; height: auto;">
-</picture>
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="assets/lockup-dark.webp">
+    <img alt="Project logo" src="assets/lockup-light.webp" style="width: 60%; height: auto;">
+  </picture>
+</p>
 &nbsp
 &nbsp
 <p align="center">
