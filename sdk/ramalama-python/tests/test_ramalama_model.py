@@ -4,13 +4,11 @@ from threading import Thread
 from unittest.mock import MagicMock
 
 import pytest
+from ramalama.model_store.global_store import ModelFile
 
-from ramalama_sdk.main import (
-    AsyncRamalamaModel,
-    RamalamaModel,
-    ServerAttributes,
-    make_chat_request,
-)
+from ramalama_sdk.main import AsyncRamalamaModel, RamalamaModel, ServerAttributes
+from ramalama_sdk.schemas import ChatMessage
+from ramalama_sdk.utils import make_chat_request
 
 
 class TestServerAttributes:
@@ -88,7 +86,7 @@ class TestMakeChatRequestIntegration:
         model.args.temp = None
         model.args.max_tokens = None
 
-        history = [{"role": "user", "content": "Hi"}, {"role": "assistant", "content": "Hello!"}]
+        history: list[ChatMessage] = [{"role": "user", "content": "Hi"}, {"role": "assistant", "content": "Hello!"}]
         response = make_chat_request(model, "How are you?", history=history)
         assert response["role"] == "assistant"
         assert "Response to: How are you?" in response["content"]
@@ -109,7 +107,43 @@ class TestAsyncRamalamaModelChat:
         model.args.temp = None
         model.args.max_tokens = None
 
-        history = [{"role": "user", "content": "Hi"}, {"role": "assistant", "content": "Hello!"}]
+        history: list[ChatMessage] = [{"role": "user", "content": "Hi"}, {"role": "assistant", "content": "Hello!"}]
         response = await model.chat("How are you?", history=history)
         assert response["role"] == "assistant"
         assert "Response to: How are you?" in response["content"]
+
+
+class TestListModels:
+    def _fake_model_listing(self, *args, **kwargs):
+        return {
+            "ollama://library/foo:latest": [ModelFile(name="foo.gguf", modified=100.0, size=10, is_partial=False)],
+            "ollama://library/bar:latest": [ModelFile(name="bar.gguf", modified=200.0, size=20, is_partial=False)],
+            "ollama://library/bad:latest": [ModelFile(name="bad.gguf", modified=300.0, size=30, is_partial=True)],
+        }
+
+    def test_list_models_sync(self, monkeypatch):
+        monkeypatch.setattr(
+            "ramalama.model_store.global_store.GlobalModelStore.list_models",
+            self._fake_model_listing,
+        )
+        model = RamalamaModel("test-model")
+        records = model.list_models()
+        assert [record.name for record in records] == [
+            "ollama://library/bar:latest",
+            "ollama://library/foo:latest",
+        ]
+        assert records[0].last_modified > records[1].last_modified
+
+    @pytest.mark.asyncio
+    async def test_list_models_async(self, monkeypatch):
+        monkeypatch.setattr(
+            "ramalama.model_store.global_store.GlobalModelStore.list_models",
+            self._fake_model_listing,
+        )
+        model = AsyncRamalamaModel("test-model")
+        records = await model.list_models()
+        assert [record.name for record in records] == [
+            "ollama://library/bar:latest",
+            "ollama://library/foo:latest",
+        ]
+        assert records[0].last_modified > records[1].last_modified

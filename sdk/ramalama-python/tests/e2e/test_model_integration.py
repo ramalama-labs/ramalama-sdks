@@ -1,5 +1,7 @@
 import pytest
+
 from ramalama_sdk.main import AsyncRamalamaModel, RamalamaModel
+from ramalama_sdk.schemas import ChatMessage
 
 from .conftest import requires_container
 
@@ -38,7 +40,7 @@ class TestRamalamaModelIntegration:
     @requires_container
     def test_chat_with_history(self, small_model):
         with RamalamaModel(small_model, timeout=120) as model:
-            history = [
+            history: list[ChatMessage] = [
                 {"role": "user", "content": "My name is Alice."},
                 {"role": "assistant", "content": "Hello Alice!"},
             ]
@@ -46,6 +48,15 @@ class TestRamalamaModelIntegration:
             assert response["role"] == "assistant"
             assert isinstance(response["content"], str)
             assert len(response["content"]) > 0
+
+    @requires_container
+    def test_list_models(self, small_model):
+        model = RamalamaModel(small_model)
+        assert model.download() is True
+
+        models = model.list_models()
+        assert len(models) > 0
+        assert any("SmolVLM-500M-Instruct-GGUF" in m.name for m in models)
 
 
 class TestAsyncRamalamaModelIntegration:
@@ -85,7 +96,7 @@ class TestAsyncRamalamaModelIntegration:
     @pytest.mark.asyncio
     async def test_chat_with_history(self, small_model):
         async with AsyncRamalamaModel(small_model, timeout=120) as model:
-            history = [
+            history: list[ChatMessage] = [
                 {"role": "user", "content": "My name is Alice."},
                 {"role": "assistant", "content": "Hello Alice!"},
             ]
@@ -93,3 +104,13 @@ class TestAsyncRamalamaModelIntegration:
             assert response["role"] == "assistant"
             assert isinstance(response["content"], str)
             assert len(response["content"]) > 0
+
+    @requires_container
+    @pytest.mark.asyncio
+    async def test_list_models(self, small_model):
+        model = AsyncRamalamaModel(small_model)
+        assert await model.download() is True
+
+        models = await model.list_models()
+        assert len(models) > 0
+        assert any("SmolVLM-500M-Instruct-GGUF" in m.name for m in models)

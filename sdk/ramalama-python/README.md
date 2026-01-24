@@ -1,3 +1,18 @@
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="../../assets/lockup-dark.webp">
+    <img alt="Project logo" src="../../assets/lockup-light.webp" style="width: 60%; height: auto;">
+  </picture>
+</p>
+&nbsp
+&nbsp
+
+<p align="center">
+  <strong>Programmable AI on any device.</strong><br/>
+  Run LLMs locally on any hardware. If you can build a container you can deploy AI.
+</p>
+
+
 # Ramalama Python SDK
 
 Build local-first AI apps on top of the Ramalama CLI. The SDK provisions models in containers and exposes a simple API for on-device inference.
@@ -16,7 +31,7 @@ Build local-first AI apps on top of the Ramalama CLI. The SDK provisions models 
   
 ### pypi
 
-```python
+```bash
 pip install ramalama-sdk
 ```
 

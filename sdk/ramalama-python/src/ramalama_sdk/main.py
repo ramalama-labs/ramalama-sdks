@@ -5,53 +5,22 @@ import copy
 import json
 import time
 import urllib.request
-from abc import ABC
+from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from functools import cached_property
 from http.client import HTTPException
 from types import SimpleNamespace
-from typing import Literal, TypedDict
 
 from ramalama.command.factory import assemble_command
 from ramalama.config import CONFIG as ramalama_conf
 from ramalama.engine import stop_container
+from ramalama.model_store.global_store import GlobalModelStore
 from ramalama.transports.base import Transport, compute_serving_port
 from ramalama.transports.transport_factory import New
 
-
-class RamalamaNoContainerManagerError(Exception):
-    """Raised when no supported container manager (docker/podman) is available."""
-
-
-class RamalamaServerTimeoutError(Exception):
-    """Raised when the model server fails to become healthy in time."""
-
-
-class ChatMessage(TypedDict):
-    """Chat completion message payload.
-
-    Attributes:
-        role: Message author role.
-        content: Message text content.
-    """
-
-    role: Literal["system", "user", "assistant", "developer"]
-    content: str
-
-
-def is_server_healthy(port: int | str) -> bool:
-    """Check whether the local server health endpoint is responding.
-
-    Args:
-        port: Port for the local server.
-
-    Returns:
-        True if the server responds with HTTP 200.
-    """
-    url = f"http://localhost:{port}/health"
-    request = urllib.request.Request(url, method="GET")
-    with urllib.request.urlopen(request, timeout=1) as response:
-        return response.status == 200
+from ramalama_sdk.errors import RamalamaNoContainerManagerError, RamalamaServerTimeoutError
+from ramalama_sdk.schemas import ChatMessage, ModelRecord
+from ramalama_sdk.utils import is_server_healthy, list_models, make_chat_request
 
 
 @dataclass
@@ -134,10 +103,10 @@ class RamalamaModelBase(ABC):
             noout=False,
             image=self.base_image,
             host=ramalama_conf.host,
-            context=self.model_args.ngl or ramalama_conf.ctx_size,
-            threads=self.model_args.ngl or ramalama_conf.threads,
+            context=self.model_args.ctx_size or ramalama_conf.ctx_size,
+            threads=self.model_args.threads or ramalama_conf.threads,
             ngl=self.model_args.ngl or ramalama_conf.ngl,
-            temp=self.model_args.ngl or ramalama_conf.temp,
+            temp=self.model_args.temp or ramalama_conf.temp,
             max_tokens=self.model_args.ngl or ramalama_conf.max_tokens,
             cache_reuse=ramalama_conf.cache_reuse,
             webui="off",
@@ -154,51 +123,9 @@ class RamalamaModelBase(ABC):
         args.pull = "always"
         return args
 
-
-def make_chat_request(model: RamalamaModelBase, message: str, history: list[ChatMessage] | None = None) -> ChatMessage:
-    """Send a synchronous chat completion request to the running server.
-
-    Args:
-        model: Active model instance with a running server.
-        message: User prompt content.
-        history: Optional prior conversation messages.
-
-    Returns:
-        Assistant message payload.
-
-    Raises:
-        RuntimeError: If the server is not running.
-    """
-    if not model.server_attributes.open:
-        raise RuntimeError("Server is not running. Call serve() first.")
-
-    messages: list[ChatMessage] = list(history) if history else []
-    messages.append({"role": "user", "content": message})
-
-    data: dict = {
-        "model": model.model_name,
-        "messages": messages,
-        "stream": False,
-    }
-    if model.args.temp:
-        data["temperature"] = float(model.args.temp)
-    if model.args.max_tokens:
-        data["max_completion_tokens"] = model.args.max_tokens
-
-    url = f"{model.server_attributes.url}/chat/completions"
-    headers = {"Content-Type": "application/json"}
-    request = urllib.request.Request(
-        url,
-        data=json.dumps(data).encode("utf-8"),
-        headers=headers,
-        method="POST",
-    )
-
-    response = urllib.request.urlopen(request)
-    response = json.loads(response.read())
-
-    result = ChatMessage(role="assistant", content=response["choices"][0]["message"]["content"])
-    return result
+    @cached_property
+    def model_store(self):
+        return GlobalModelStore(self.args.store)
 
 
 class RamalamaModel(RamalamaModelBase):
@@ -220,7 +147,7 @@ class RamalamaModel(RamalamaModelBase):
             self.transport = New(self.model_name, self.args)
 
         self.transport.ensure_model_exists(self.args)
-        cmd = assemble_command(self.args)
+        cmd = assemble_command(self.args)  # type: ignore
         self.process = self.transport.serve_nonblocking(self.args, cmd)
         self.server_attributes.start(self.args.port)
 
@@ -295,6 +222,14 @@ class RamalamaModel(RamalamaModelBase):
         """
         return make_chat_request(self, message, history)
 
+    def list_models(self) -> list[ModelRecord]:
+        """List locally available models, sorted by most recently modified first.
+
+        Returns:
+            Models available in the local store, newest first.
+        """
+        return list_models(self.model_store, self.args.engine)
+
     def __enter__(self):
         """Context manager entry that starts the server."""
         self.serve()
@@ -325,7 +260,7 @@ class AsyncRamalamaModel(RamalamaModelBase):
             self.transport = New(self.model_name, self.args)
 
         self.transport.ensure_model_exists(self.args)
-        cmd = assemble_command(self.args)
+        cmd = assemble_command(self.args)  # type: ignore
         self.process = self.transport.serve_nonblocking(self.args, cmd)
         self.server_attributes.start(self.args.port)
 
@@ -405,6 +340,15 @@ class AsyncRamalamaModel(RamalamaModelBase):
         """
         loop = asyncio.get_event_loop()
         return await loop.run_in_executor(None, make_chat_request, self, message, history)
+
+    async def list_models(self) -> list[ModelRecord]:
+        """List available models without blocking the event loop.
+
+        Returns:
+            Models available in the local store, newest first.
+        """
+        loop = asyncio.get_event_loop()
+        return await loop.run_in_executor(None, list_models, self.model_store, self.args.engine)
 
     async def __aenter__(self):
         """Async context manager entry that starts the server."""
