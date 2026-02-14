@@ -17,6 +17,8 @@ class ChatMessage(TypedDict):
 
 @dataclass
 class ModelRecord:
+    """Metadata describing a locally available model artifact."""
+
     name: str
     last_modified: datetime  # ISO 8601
     size: int  # bytes

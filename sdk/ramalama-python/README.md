@@ -121,6 +121,20 @@ model = RamalamaModel(
 | ctx_size    | int   | Context window override.                                      | 0 (loaded from the model)    |
 | timeout     | int           | Seconds to wait for server readiness.                         | 30      |
 
+Global SDK host defaults are configured once per process:
+
+```python
+from ramalama_sdk import settings
+
+settings.connection.bind_host = "127.0.0.1"
+settings.connection.connect_host = "127.0.0.1"
+```
+
+When `connect_host` is not explicitly configured, the SDK resolves it automatically:
+- host process: `127.0.0.1`
+- containerized SDK + Docker daemon: `host.docker.internal`
+- containerized SDK + Podman daemon: `host.containers.internal`
+
 ### Async Models
 
 The Async model API is identical to the sync examples above.

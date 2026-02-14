@@ -1,6 +1,6 @@
 import pytest
 
-from ramalama_sdk.main import AsyncRamalamaModel, RamalamaModel
+from ramalama_sdk.main import AsyncRamalamaModel, ModelStore, RamalamaModel
 from ramalama_sdk.schemas import ChatMessage
 
 from .conftest import requires_container
@@ -10,7 +10,7 @@ class TestRamalamaModelIntegration:
     @requires_container
     def test_serve_and_chat(self, small_model):
         with RamalamaModel(small_model, timeout=120) as model:
-            assert model.server_attributes.open is True
+            assert model.server_attributes.ready is True
             assert model.server_attributes.url is not None
 
             response = model.chat("Say hello in one word.")
@@ -23,12 +23,12 @@ class TestRamalamaModelIntegration:
         model = RamalamaModel(small_model, timeout=120)
         model.serve()
 
-        assert model.server_attributes.open is True
+        assert model.server_attributes.ready is True
         assert model.process is not None
 
         model.stop()
 
-        assert model.server_attributes.open is False
+        assert model.server_attributes.ready is False
         assert model.process is None
 
     @requires_container
@@ -54,7 +54,8 @@ class TestRamalamaModelIntegration:
         model = RamalamaModel(small_model)
         assert model.download() is True
 
-        models = model.list_models()
+        store = ModelStore(conf=model.conf)
+        models = store.list_models()
         assert len(models) > 0
         assert any("SmolVLM-500M-Instruct-GGUF" in m.name for m in models)
 
@@ -64,7 +65,7 @@ class TestAsyncRamalamaModelIntegration:
     @pytest.mark.asyncio
     async def test_serve_and_chat(self, small_model):
         async with AsyncRamalamaModel(small_model, timeout=120) as model:
-            assert model.server_attributes.open is True
+            assert model.server_attributes.ready is True
 
             response = await model.chat("Say hello in one word.")
             assert response["role"] == "assistant"
@@ -77,12 +78,12 @@ class TestAsyncRamalamaModelIntegration:
         model = AsyncRamalamaModel(small_model, timeout=120)
         await model.serve()
 
-        assert model.server_attributes.open is True
+        assert model.server_attributes.ready is True
         assert model.process is not None
 
         await model.stop()
 
-        assert model.server_attributes.open is False
+        assert model.server_attributes.ready is False
         assert model.process is None
 
     @requires_container
@@ -111,6 +112,7 @@ class TestAsyncRamalamaModelIntegration:
         model = AsyncRamalamaModel(small_model)
         assert await model.download() is True
 
-        models = await model.list_models()
+        store = ModelStore(conf=model.conf)
+        models = store.list_models()
         assert len(models) > 0
         assert any("SmolVLM-500M-Instruct-GGUF" in m.name for m in models)
